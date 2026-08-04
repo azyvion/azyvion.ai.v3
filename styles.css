@@ -1,0 +1,193 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
+
+:root{
+  --bg:#02080f;
+  --sidebar:#040e1a;
+  --panel:rgba(4,19,35,.78);
+  --bubble:rgba(23,110,177,.16);
+  --line:rgba(239,241,243,.08);
+  --line-strong:rgba(239,241,243,.14);
+  --text:#eff1f3;
+  --muted:#7c8b99;
+  --muted-dim:#4f5d68;
+  --blue:#176eb1;
+  --cyan:#00a9d9;
+  --bright:#72d9ff;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;overflow:hidden}
+button{font-family:inherit}
+
+.app{display:flex;height:100vh;width:100vw}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:264px;flex:0 0 264px;background:var(--sidebar);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;height:100vh;z-index:20;transition:transform .25s ease;
+}
+.side-top{padding:18px 16px 8px}
+.brand{display:flex;align-items:center;gap:10px;font:800 13px "Manrope";letter-spacing:.12em;text-decoration:none;color:var(--text)}
+.brand img{width:28px;height:28px;object-fit:contain}
+.brand b{color:var(--bright)}
+
+.new-chat{
+  margin:10px 14px 6px;padding:10px 13px;display:flex;align-items:center;gap:9px;
+  background:rgba(23,110,177,.14);border:1px solid rgba(0,169,217,.3);color:var(--text);
+  border-radius:11px;font:600 12.5px "DM Sans";cursor:pointer;transition:background .15s,border-color .15s;
+}
+.new-chat:hover{background:rgba(23,110,177,.24);border-color:rgba(0,169,217,.5)}
+.new-chat svg{color:var(--bright);flex:0 0 auto}
+
+.history{flex:1;overflow-y:auto;padding:10px 10px 6px;display:flex;flex-direction:column;gap:2px}
+.history::-webkit-scrollbar{width:6px}
+.history::-webkit-scrollbar-thumb{background:rgba(239,241,243,.1);border-radius:3px}
+
+.history-empty{color:var(--muted-dim);font-size:11.5px;padding:14px 10px;letter-spacing:.02em}
+
+.h-item{
+  position:relative;display:flex;align-items:center;gap:0;padding:9px 12px;border-radius:9px;cursor:pointer;
+  color:#a6b3bf;font-size:12.5px;line-height:1.3;border:1px solid transparent;
+}
+.h-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.h-item:hover{background:rgba(239,241,243,.05);color:var(--text)}
+.h-item.active{background:rgba(23,110,177,.16);border-color:rgba(0,169,217,.22);color:#fff}
+.h-item.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;background:var(--bright);border-radius:2px}
+.h-item .del{
+  opacity:0;flex:0 0 auto;width:20px;height:20px;display:grid;place-items:center;border-radius:6px;color:#8393a1;
+}
+.h-item:hover .del{opacity:1}
+.h-item .del:hover{background:rgba(255,255,255,.08);color:#ff8080}
+
+.side-bottom{padding:12px 16px 16px;border-top:1px solid var(--line)}
+.side-bottom .status{display:flex;align-items:center;gap:8px;color:#657482;font-size:11px}
+.side-bottom .status i{width:7px;height:7px;border-radius:50%;background:#657482;flex:0 0 auto}
+.side-bottom .status.ready i{background:#5fe0b2;box-shadow:0 0 14px rgba(95,224,178,.7)}
+.side-bottom .status.error i{background:#ff7070}
+
+/* ---------- Mobile sidebar toggle ---------- */
+.menu-toggle{
+  display:none;position:fixed;top:14px;left:14px;z-index:40;width:36px;height:36px;border-radius:9px;
+  background:rgba(4,19,35,.85);border:1px solid var(--line-strong);color:var(--text);align-items:center;justify-content:center;
+  backdrop-filter:blur(10px);cursor:pointer;
+}
+.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15}
+
+/* ---------- Main ---------- */
+.main{position:relative;flex:1;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.bg-grid{position:absolute;inset:0;opacity:.18;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:65px 65px;mask-image:radial-gradient(circle at 50% 30%,#000,transparent 72%);pointer-events:none}
+.glow{position:absolute;width:560px;height:560px;border-radius:50%;background:var(--blue);filter:blur(140px);opacity:.13;top:-8%;left:50%;transform:translateX(-50%);pointer-events:none}
+
+.thread{position:relative;z-index:1;flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:0 20px 140px}
+.thread::-webkit-scrollbar{width:8px}
+.thread::-webkit-scrollbar-thumb{background:rgba(239,241,243,.08);border-radius:4px}
+
+.welcome{width:min(100%,720px);text-align:center;margin:auto;padding:70px 0 20px}
+.eyebrow{font-size:10px;letter-spacing:.22em;color:#60707e;font-weight:700;margin-bottom:18px}
+.welcome h1{font:800 clamp(38px,6vw,60px)/1.02 "Manrope";letter-spacing:-.05em;margin:0}
+.welcome h1 em{font-style:normal;color:var(--bright)}
+.welcome>p{max-width:520px;margin:20px auto 0;color:var(--muted);font-size:14px}
+
+.suggestions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:28px}
+.suggestions button{background:transparent;color:#91a0ad;border:1px solid var(--line-strong);border-radius:999px;padding:9px 14px;font:12px "DM Sans";cursor:pointer;transition:border-color .15s,color .15s}
+.suggestions button:hover{color:#fff;border-color:rgba(0,169,217,.45)}
+
+.messages{width:min(100%,760px);display:flex;flex-direction:column;padding-top:24px}
+.message{display:flex;gap:13px;margin-bottom:22px}
+.avatar{flex:0 0 30px;height:30px;border:1px solid rgba(0,169,217,.35);border-radius:9px;display:grid;place-items:center;font:800 12px "Manrope";color:#8fe0ff;background:rgba(0,169,217,.06)}
+.bubble{max-width:100%;min-width:0}
+.label{display:block;color:#657583;font-size:9px;font-weight:700;letter-spacing:.15em;margin-bottom:7px}
+.bubble p{margin:0;color:#dbe1e6;font-size:14.5px;line-height:1.7;white-space:pre-wrap;word-wrap:break-word}
+.message.user{justify-content:flex-end}
+.message.user .avatar{order:2;border-color:rgba(239,241,243,.18);color:#fff;background:rgba(239,241,243,.05)}
+.message.user .bubble{background:var(--bubble);border:1px solid rgba(23,110,177,.3);padding:12px 15px;border-radius:15px 4px 15px 15px;max-width:560px}
+.message.user .label{display:none}
+
+.typing{display:inline-flex;gap:4px}
+.typing span{width:5px;height:5px;border-radius:50%;background:var(--bright);animation:b 1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes b{50%{opacity:.2;transform:translateY(-2px)}}
+
+/* ---------- streaming "materialize" effect ---------- */
+.message.streaming .avatar{
+  animation:avatar-pulse 1.6s ease-in-out infinite;
+}
+@keyframes avatar-pulse{
+  0%,100%{box-shadow:0 0 0 rgba(0,169,217,0)}
+  50%{box-shadow:0 0 16px rgba(0,169,217,.55)}
+}
+
+.mat-in{
+  display:inline;
+  animation:materialize .5s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes materialize{
+  0%{opacity:0;filter:blur(6px);color:var(--bright);text-shadow:0 0 12px rgba(0,169,217,.85)}
+  55%{opacity:1;filter:blur(1.5px);color:var(--bright);text-shadow:0 0 8px rgba(0,169,217,.5)}
+  100%{opacity:1;filter:blur(0);color:#dbe1e6;text-shadow:0 0 0 rgba(0,169,217,0)}
+}
+
+.stream-cursor{
+  display:inline-block;width:7px;height:15px;margin-left:2px;
+  background:var(--bright);border-radius:1px;vertical-align:text-bottom;
+  box-shadow:0 0 8px rgba(0,169,217,.8);
+  animation:cursor-blink 1s steps(2,jump-none) infinite;
+}
+@keyframes cursor-blink{50%{opacity:0}}
+
+@media (prefers-reduced-motion: reduce){
+  .mat-in{animation:none;color:#dbe1e6}
+  .stream-cursor{animation:none}
+  .message.streaming .avatar{animation:none}
+}
+
+/* ---------- Composer (docked, floating) ---------- */
+.composer-dock{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;padding:0 20px 22px;background:linear-gradient(180deg,transparent,var(--bg) 55%)}
+.composer{
+  width:min(100%,720px);display:flex;align-items:flex-end;gap:6px;padding:9px 9px 9px 9px;
+  background:var(--panel);border:1px solid var(--line-strong);border-radius:26px;
+  backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,.4);
+}
+.composer:focus-within{border-color:rgba(0,169,217,.5)}
+.attach-btn{
+  width:38px;height:38px;flex:0 0 auto;border:0;border-radius:50%;background:transparent;color:#8ea0af;
+  display:grid;place-items:center;cursor:pointer;transition:background .15s,color .15s;
+}
+.attach-btn:hover{background:rgba(239,241,243,.08);color:var(--bright)}
+textarea{resize:none;flex:1;border:0;outline:0;background:transparent;color:#fff;font:14.5px "DM Sans";padding:10px 0;max-height:160px;line-height:1.5}
+textarea::placeholder{color:#596875}
+.composer button[type="submit"]{width:38px;height:38px;flex:0 0 auto;border:0;border-radius:50%;background:var(--text);color:#041323;display:grid;place-items:center;cursor:pointer;transition:opacity .15s,transform .1s}
+.composer button[type="submit"]:hover{transform:scale(1.05)}
+.composer button[type="submit"]:disabled{opacity:.4;transform:none;cursor:default}
+.hint{text-align:center;color:var(--muted-dim);font-size:9px;letter-spacing:.08em;padding-top:11px}
+
+/* ---------- Attachments ---------- */
+.attach-preview{width:min(100%,720px);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.attach-preview:empty{display:none}
+.attach-thumb{position:relative;width:56px;height:56px;border-radius:10px;overflow:hidden;border:1px solid var(--line-strong);flex:0 0 auto}
+.attach-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.attach-thumb .rm{
+  position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(2,8,15,.85);
+  border:1px solid rgba(239,241,243,.2);color:#fff;display:grid;place-items:center;cursor:pointer;font-size:10px;line-height:1;
+}
+.attach-thumb .rm:hover{background:rgba(255,80,80,.85)}
+
+.msg-images{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.msg-images img{max-width:180px;max-height:180px;border-radius:12px;border:1px solid var(--line-strong);object-fit:cover;cursor:zoom-in}
+.message.user .msg-images{justify-content:flex-end}
+
+/* ---------- Responsive ---------- */
+@media(max-width:860px){
+  .menu-toggle{display:flex}
+  .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);box-shadow:0 0 40px rgba(0,0,0,.5)}
+  .app.sidebar-open .sidebar{transform:translateX(0)}
+  .app.sidebar-open .scrim{display:block}
+  .welcome{padding-top:96px}
+  .thread{padding:0 14px 130px}
+}
+@media(max-width:600px){
+  .welcome h1{font-size:36px}
+  .messages{padding-top:16px}
+  .composer-dock{padding:0 12px 16px}
+}
