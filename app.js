@@ -407,6 +407,12 @@ async function sendMessage(text) {
     }
 
     stream.finish();
+    if (!full) {
+      // Stream completed but the model returned no visible text — show the
+      // fallback in the bubble immediately instead of leaving it blank
+      // until the next reload.
+      stream.el.querySelector(".stream-text").textContent = "I couldn't generate a response.";
+    }
     chat.messages.push({ role: "assistant", content: full || "I couldn't generate a response." });
     saveChats();
   } catch (e) {
