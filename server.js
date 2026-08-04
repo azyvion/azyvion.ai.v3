@@ -168,9 +168,14 @@ app.post("/api/chat", chatLimiter, dailyLimiter, async (req, res) => {
   // which is what produced empty responses on every single message. Low
   // effort + a generous explicit ceiling fixes that.
   // See https://console.groq.com/docs/reasoning
-  const reasoningParams = hasImages
-    ? { reasoning_effort: "none" }
-    : { include_reasoning: false, reasoning_effort: "low" };
+  // reasoning_effort:"low" was still occasionally letting the model burn
+  // its entire max_completion_tokens on hidden reasoning and return zero
+  // visible text (a known behavior with openai/gpt-oss-120b on Groq — see
+  // https://community.groq.com/t/gp120b-responses-only-contain-reasoning-tokens/759).
+  // "none" avoids the reasoning phase entirely for both text and vision
+  // calls, and the higher token ceiling below gives extra headroom in case
+  // some reasoning still slips through.
+  const reasoningParams = { reasoning_effort: "none" };
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -185,7 +190,7 @@ app.post("/api/chat", chatLimiter, dailyLimiter, async (req, res) => {
       model,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...cleaned],
       stream: true,
-      max_completion_tokens: 2048,
+      max_completion_tokens: 4096,
       ...reasoningParams,
     });
 
