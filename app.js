@@ -1,6 +1,19 @@
 const API_BASE = (window.AZYVION_CONFIG && window.AZYVION_CONFIG.API_BASE_URL) || "";
 const STORAGE_KEY = "azyvion_ai_chats_v1";
 
+// Optional account system (Supabase). If SUPABASE_URL/ANON_KEY aren't set
+// in config.js, `supabase` stays null and the whole app behaves exactly
+// like before — guest-only, chats in localStorage.
+const SUPABASE_URL = (window.AZYVION_CONFIG && window.AZYVION_CONFIG.SUPABASE_URL) || "";
+const SUPABASE_ANON_KEY = (window.AZYVION_CONFIG && window.AZYVION_CONFIG.SUPABASE_ANON_KEY) || "";
+const supabase =
+  SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+let session = null; // Supabase session object, or null = guest mode
+const loadedMessagesFor = new Set(); // chat ids whose messages we've already fetched from the DB
+
 const appEl = document.querySelector(".app"),
   menuToggle = document.getElementById("menuToggle"),
   scrim = document.getElementById("scrim"),
@@ -18,17 +31,30 @@ const appEl = document.querySelector(".app"),
   send = document.getElementById("send"),
   statusText = document.getElementById("statusText"),
   statusWrap = document.getElementById("statusWrap"),
-  suggestions = document.getElementById("suggestions");
+  suggestions = document.getElementById("suggestions"),
+  accountEl = document.getElementById("account"),
+  authModal = document.getElementById("authModal"),
+  authClose = document.getElementById("authClose"),
+  tabLogin = document.getElementById("tabLogin"),
+  tabSignup = document.getElementById("tabSignup"),
+  authForm = document.getElementById("authForm"),
+  authEmail = document.getElementById("authEmail"),
+  authPassword = document.getElementById("authPassword"),
+  authError = document.getElementById("authError"),
+  authSubmit = document.getElementById("authSubmit");
 
 const MAX_IMAGES = 5; // Groq's qwen3.6-27b vision model accepts up to 5 images per request
 let pendingImages = []; // [{ dataUrl, name }] queued for the next message
 
 let demoMode = false;
-let chats = loadChats();
-let activeId = chats.length ? chats[0].id : createChat();
+let chats = [];
+let activeId = null;
 
-/* ---------- persistence ---------- */
-function loadChats() {
+/* ---------- persistence ----------
+   Guest mode (no Supabase session): everything lives in localStorage,
+   exactly as before. Logged-in mode: chats/messages live in Supabase,
+   scoped per-user by Row Level Security — see SUPABASE_SETUP.md. */
+function loadChatsLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
@@ -38,7 +64,7 @@ function loadChats() {
   }
 }
 
-function saveChats() {
+function saveChatsLocal() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
   } catch {
@@ -46,10 +72,77 @@ function saveChats() {
   }
 }
 
-function createChat() {
+async function loadChatsFromDB() {
+  const { data, error } = await supabase
+    .from("chats")
+    .select("id, title")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Azyvion AI: failed to load chats", error);
+    return [];
+  }
+  return data.map((c) => ({ id: c.id, title: c.title, messages: [] }));
+}
+
+async function loadInitialChats() {
+  return session ? loadChatsFromDB() : loadChatsLocal();
+}
+
+// Fetches a chat's messages from the DB the first time it's opened, then
+// caches them in memory for the rest of the session.
+async function ensureMessagesLoaded(chatId) {
+  const chat = chats.find((c) => c.id === chatId);
+  if (!chat || !session || loadedMessagesFor.has(chatId)) return;
+  const { data, error } = await supabase
+    .from("messages")
+    .select("role, content")
+    .eq("chat_id", chatId)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("Azyvion AI: failed to load messages", error);
+    return;
+  }
+  chat.messages = data.map((m) => ({ role: m.role, content: m.content }));
+  loadedMessagesFor.add(chatId);
+}
+
+async function persistUserMessage(chat, content, isFirstMessage) {
+  try {
+    if (isFirstMessage) {
+      await supabase.from("chats").update({ title: chat.title }).eq("id", chat.id);
+    }
+    await supabase.from("messages").insert({ chat_id: chat.id, role: "user", content });
+  } catch (e) {
+    console.error("Azyvion AI: failed to save your message", e);
+  }
+}
+
+async function persistAssistantMessage(chat, content) {
+  try {
+    await supabase.from("messages").insert({ chat_id: chat.id, role: "assistant", content });
+  } catch (e) {
+    console.error("Azyvion AI: failed to save the reply", e);
+  }
+}
+
+async function createChat() {
+  if (session) {
+    const { data, error } = await supabase
+      .from("chats")
+      .insert({ user_id: session.user.id, title: "New chat" })
+      .select("id, title")
+      .single();
+    if (error) {
+      console.error("Azyvion AI: failed to create chat", error);
+      return null;
+    }
+    chats.unshift({ id: data.id, title: data.title, messages: [] });
+    loadedMessagesFor.add(data.id); // brand new chat, nothing to fetch
+    return data.id;
+  }
   const id = `c_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   chats.unshift({ id, title: "New chat", messages: [] });
-  saveChats();
+  saveChatsLocal();
   return id;
 }
 
@@ -87,32 +180,127 @@ function renderHistory() {
   });
 }
 
-function switchChat(id) {
+async function switchChat(id) {
   activeId = id;
   renderHistory();
+  await ensureMessagesLoaded(id);
   renderMessages();
   closeSidebarOnMobile();
 }
 
-function deleteChat(id) {
+async function deleteChat(id) {
   const idx = chats.findIndex((c) => c.id === id);
   if (idx === -1) return;
   chats.splice(idx, 1);
-  saveChats();
+  if (session) {
+    const { error } = await supabase.from("chats").delete().eq("id", id);
+    if (error) console.error("Azyvion AI: failed to delete chat", error);
+  } else {
+    saveChatsLocal();
+  }
   if (activeId === id) {
-    activeId = chats.length ? chats[0].id : createChat();
+    activeId = chats.length ? chats[0].id : await createChat();
   }
   renderHistory();
+  await ensureMessagesLoaded(activeId);
   renderMessages();
 }
 
-newChatBtn.addEventListener("click", () => {
-  activeId = createChat();
+newChatBtn.addEventListener("click", async () => {
+  activeId = await createChat();
   renderHistory();
   renderMessages();
   closeSidebarOnMobile();
   input.focus();
 });
+
+/* ---------- account / auth ---------- */
+let authMode = "login";
+
+function openAuthModal(mode) {
+  authMode = mode;
+  authModal.hidden = false;
+  authError.textContent = "";
+  authForm.reset();
+  tabLogin.classList.toggle("active", mode === "login");
+  tabSignup.classList.toggle("active", mode === "signup");
+  authSubmit.textContent = mode === "login" ? "Sign in" : "Create account";
+  authEmail.focus();
+}
+function closeAuthModal() {
+  authModal.hidden = true;
+}
+
+function renderAccount() {
+  if (!supabase) return; // no Supabase configured — stay in guest mode, account block stays hidden
+  accountEl.hidden = false;
+  accountEl.innerHTML = "";
+  if (session) {
+    const row = document.createElement("div");
+    row.className = "account-row";
+    const email = document.createElement("span");
+    email.className = "account-email";
+    email.textContent = session.user.email;
+    const out = document.createElement("button");
+    out.className = "account-signout";
+    out.textContent = "Sign out";
+    out.addEventListener("click", () => supabase.auth.signOut());
+    row.appendChild(email);
+    row.appendChild(out);
+    accountEl.appendChild(row);
+  } else {
+    const btn = document.createElement("button");
+    btn.className = "account-btn";
+    btn.type = "button";
+    btn.textContent = "Sign in to save your chats";
+    btn.addEventListener("click", () => openAuthModal("login"));
+    accountEl.appendChild(btn);
+  }
+}
+
+if (supabase) {
+  authClose.addEventListener("click", closeAuthModal);
+  authModal.addEventListener("click", (e) => {
+    if (e.target === authModal) closeAuthModal();
+  });
+  tabLogin.addEventListener("click", () => openAuthModal("login"));
+  tabSignup.addEventListener("click", () => openAuthModal("signup"));
+
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    authError.textContent = "";
+    authSubmit.disabled = true;
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    try {
+      const { error } =
+        authMode === "login"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      closeAuthModal();
+    } catch (err) {
+      authError.textContent = err.message || "Something went wrong. Try again.";
+    } finally {
+      authSubmit.disabled = false;
+    }
+  });
+
+  // Re-syncs the whole chat list whenever the user logs in or out, so the
+  // sidebar switches cleanly between "their" chats and guest/local ones.
+  supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    const wasLoggedIn = Boolean(session);
+    session = newSession;
+    renderAccount();
+    if (Boolean(session) === wasLoggedIn) return;
+    loadedMessagesFor.clear();
+    chats = await loadInitialChats();
+    activeId = chats.length ? chats[0].id : await createChat();
+    renderHistory();
+    await ensureMessagesLoaded(activeId);
+    renderMessages();
+  });
+}
 
 /* ---------- mobile sidebar ---------- */
 function openSidebar() {
@@ -338,9 +526,14 @@ async function sendMessage(text) {
       ]
     : text;
 
-  if (!chat.messages.length) chat.title = titleFrom(text || "Imagen adjunta");
+  const isFirstMessage = !chat.messages.length;
+  if (isFirstMessage) chat.title = titleFrom(text || "Imagen adjunta");
   chat.messages.push({ role: "user", content });
-  saveChats();
+  if (session) {
+    persistUserMessage(chat, content, isFirstMessage);
+  } else {
+    saveChatsLocal();
+  }
   renderHistory();
   appendMessageEl("user", content);
   scrollToBottom();
@@ -356,7 +549,11 @@ async function sendMessage(text) {
     const reply = "This is a static preview — no backend is connected here. Deploy server.js (see README) and set API_BASE_URL in config.js to enable real responses.";
     await streamDemoReply(reply);
     chat.messages.push({ role: "assistant", content: reply });
-    saveChats();
+    if (session) {
+      await persistAssistantMessage(chat, reply);
+    } else {
+      saveChatsLocal();
+    }
     send.disabled = false;
     input.focus();
     return;
@@ -413,8 +610,13 @@ async function sendMessage(text) {
       // until the next reload.
       stream.el.querySelector(".stream-text").textContent = "I couldn't generate a response.";
     }
-    chat.messages.push({ role: "assistant", content: full || "I couldn't generate a response." });
-    saveChats();
+    const assistantContent = full || "I couldn't generate a response.";
+    chat.messages.push({ role: "assistant", content: assistantContent });
+    if (session) {
+      await persistAssistantMessage(chat, assistantContent);
+    } else {
+      saveChatsLocal();
+    }
   } catch (e) {
     if (!stream) {
       t.remove();
@@ -478,6 +680,17 @@ document.querySelectorAll(".suggestions button").forEach((b) =>
   b.addEventListener("click", () => sendMessage(b.textContent))
 );
 
-renderHistory();
-renderMessages();
-checkStatus();
+async function init() {
+  if (supabase) {
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
+    renderAccount();
+  }
+  chats = await loadInitialChats();
+  activeId = chats.length ? chats[0].id : await createChat();
+  renderHistory();
+  await ensureMessagesLoaded(activeId);
+  renderMessages();
+  checkStatus();
+}
+init();
