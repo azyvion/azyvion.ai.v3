@@ -27,11 +27,28 @@
     </button>
     <nav class="history" id="history" aria-label="Chat history"></nav>
     <div class="side-bottom">
+      <div class="account" id="account" hidden></div>
       <div class="status" id="statusWrap"><i id="statusDot"></i><span id="statusText">Checking system</span></div>
     </div>
   </aside>
 
   <div class="scrim" id="scrim"></div>
+
+  <div class="auth-modal" id="authModal" hidden>
+    <div class="auth-card">
+      <button class="auth-close" id="authClose" aria-label="Close" type="button">✕</button>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" type="button">Sign in</button>
+        <button class="auth-tab" id="tabSignup" type="button">Sign up</button>
+      </div>
+      <form id="authForm">
+        <input type="email" id="authEmail" placeholder="Email" autocomplete="email" required>
+        <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" minlength="6" required>
+        <div class="auth-error" id="authError"></div>
+        <button type="submit" class="auth-submit" id="authSubmit">Sign in</button>
+      </form>
+    </div>
+  </div>
 
   <main class="main">
     <div class="bg-grid"></div>
@@ -65,6 +82,7 @@
     </div>
   </main>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="./config.js"></script>
 <script src="./app.js"></script>
 </body>
