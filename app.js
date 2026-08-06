@@ -1,3 +1,6 @@
+(function () {
+"use strict";
+
 const API_BASE = (window.AZYVION_CONFIG && window.AZYVION_CONFIG.API_BASE_URL) || "";
 const STORAGE_KEY = "azyvion_ai_chats_v1";
 
@@ -694,3 +697,5 @@ async function init() {
   checkStatus();
 }
 init();
+
+})();
