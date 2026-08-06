@@ -59,6 +59,29 @@ button{font-family:inherit}
 .h-item:hover .del{opacity:1}
 .h-item .del:hover{background:rgba(255,255,255,.08);color:#ff8080}
 
+.account{padding:0 2px 12px}
+.account-btn{width:100%;padding:9px 12px;background:rgba(0,169,217,.08);border:1px solid rgba(0,169,217,.28);color:#bfeeff;border-radius:9px;font:600 12.5px "DM Sans";cursor:pointer}
+.account-btn:hover{background:rgba(0,169,217,.16)}
+.account-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.account-email{color:#a6b3bf;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-signout{flex:0 0 auto;background:transparent;border:1px solid var(--line-strong);color:#8ea0af;border-radius:7px;padding:5px 9px;font-size:10.5px;cursor:pointer}
+.account-signout:hover{color:#fff;border-color:rgba(255,112,112,.4);background:rgba(255,112,112,.08)}
+
+.auth-modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.auth-card{position:relative;width:min(90vw,360px);background:var(--panel);border:1px solid var(--line-strong);border-radius:18px;padding:26px 22px 22px;box-shadow:0 30px 90px rgba(0,0,0,.5)}
+.auth-close{position:absolute;top:12px;right:12px;width:26px;height:26px;border:0;border-radius:8px;background:transparent;color:#8ea0af;cursor:pointer;font-size:12px}
+.auth-close:hover{background:rgba(255,255,255,.06);color:#fff}
+.auth-tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.auth-tab{flex:1;padding:9px 0;background:transparent;border:0;border-bottom:2px solid transparent;color:#7c8b99;font:600 12.5px "DM Sans";cursor:pointer}
+.auth-tab.active{color:#fff;border-bottom-color:var(--bright)}
+#authForm{display:flex;flex-direction:column;gap:10px}
+#authForm input{background:rgba(255,255,255,.04);border:1px solid var(--line-strong);border-radius:10px;padding:11px 13px;color:#fff;font:13.5px "DM Sans";outline:0}
+#authForm input:focus{border-color:rgba(0,169,217,.5)}
+.auth-error{color:#ff8080;font-size:12px;min-height:1em}
+.auth-submit{background:var(--text);color:#041323;border:0;border-radius:10px;padding:11px;font:700 13px "DM Sans";cursor:pointer}
+.auth-submit:hover{opacity:.92}
+.auth-submit:disabled{opacity:.5;cursor:default}
+
 .side-bottom{padding:12px 16px 16px;border-top:1px solid var(--line)}
 .side-bottom .status{display:flex;align-items:center;gap:8px;color:#657482;font-size:11px}
 .side-bottom .status i{width:7px;height:7px;border-radius:50%;background:#657482;flex:0 0 auto}
