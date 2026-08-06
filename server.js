@@ -71,9 +71,13 @@ const client = process.env.GROQ_API_KEY
   : null;
 
 // Set GROQ_MODEL in .env to change models. llama-3.3-70b-versatile was
-// deprecated by Groq on 2026-06-17; openai/gpt-oss-120b is the current
-// recommended general-purpose default. See https://console.groq.com/docs/models
-const MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+// deprecated by Groq on 2026-06-17. openai/gpt-oss-120b was tried next but
+// has a known, unresolved Groq-side bug where it sometimes "thinks" and
+// never emits visible content (see
+// https://community.groq.com/t/gp120b-responses-only-contain-reasoning-tokens/759) —
+// no combination of reasoning params fixes it reliably. moonshotai/kimi-k2-instruct-0905
+// is a non-reasoning model, so this class of bug doesn't apply to it.
+const MODEL = process.env.GROQ_MODEL || "moonshotai/kimi-k2-instruct-0905";
 
 // Used automatically whenever a message includes an image. Set
 // GROQ_VISION_MODEL in .env to override. See https://console.groq.com/docs/vision
@@ -160,22 +164,12 @@ app.post("/api/chat", chatLimiter, dailyLimiter, async (req, res) => {
   const hasImages = cleaned.some((m) => Array.isArray(m.content));
   const model = hasImages ? VISION_MODEL : MODEL;
 
-  // openai/gpt-oss-120b and qwen3.6 both "think" internally before writing
-  // the real answer. include_reasoning:false only hides that thinking from
-  // the output — it doesn't stop the model spending tokens on it. Left at
-  // the default effort with no explicit budget, the model can burn its
-  // entire token allowance thinking and never reach the actual reply,
-  // which is what produced empty responses on every single message. Low
-  // effort + a generous explicit ceiling fixes that.
+  // Only the vision model (Qwen 3.6) is a reasoning model now — "none" is
+  // the value that disables its thinking mode. Note this value is ONLY
+  // valid for Qwen; GPT-OSS models only accept low/medium/high, which is
+  // part of why the previous default model needed replacing above.
   // See https://console.groq.com/docs/reasoning
-  // reasoning_effort:"low" was still occasionally letting the model burn
-  // its entire max_completion_tokens on hidden reasoning and return zero
-  // visible text (a known behavior with openai/gpt-oss-120b on Groq — see
-  // https://community.groq.com/t/gp120b-responses-only-contain-reasoning-tokens/759).
-  // "none" avoids the reasoning phase entirely for both text and vision
-  // calls, and the higher token ceiling below gives extra headroom in case
-  // some reasoning still slips through.
-  const reasoningParams = { reasoning_effort: "none" };
+  const reasoningParams = hasImages ? { reasoning_effort: "none" } : {};
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
